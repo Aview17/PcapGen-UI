@@ -3,7 +3,7 @@ import sys
 from PyQt5.QtWidgets import QMainWindow
 from views.Main import Ui_MainWindow  # 导入对话框类
 
-from controllers import OSController, PayloadController
+from controllers import OSController, PayloadController, GenerateController, TextLog
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -17,12 +17,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.textBrowser_log.document().setMaximumBlockCount(256)
         # 用字典设置一些简单的全局配置
         self.settings = {}
+        # 封装一个用于在log区域记录信息的类
+        self.text_log = TextLog(self)
 
         """ 为按钮绑定事件 """
         self.pushButton_select_dir.clicked.connect(self.slot_select_dir)
         self.pushButton_open_dir.clicked.connect(self.slot_open_dir)
         self.pushButton_add_default_req.clicked.connect(self.slot_add_default_req)
         self.pushButton_add_default_rsp.clicked.connect(self.slot_add_default_rsp)
+        self.pushButton_gen_pcap.clicked.connect(self.slot_gen_pcap)
 
     """ 定义槽函数 """
     # 选择文件夹
@@ -40,3 +43,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     # 添加默认响应payload
     def slot_add_default_rsp(self):
         PayloadController.add_default_req_rsp(self, "rsp")
+
+    # 生成报文按钮
+    def slot_gen_pcap(self):
+        GenerateController.gen_pcap(self)

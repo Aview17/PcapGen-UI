@@ -2,8 +2,6 @@ import os
 
 from PyQt5 import QtWidgets
 
-from models.other_model import *
-
 
 def select_dir(main_window):
     # 设置记录上次打开的目录
@@ -17,11 +15,9 @@ def select_dir(main_window):
 def open_dir(main_window):
     folder = main_window.lineEdit_output_path.text()
     if folder is None or len(folder) < 1:
-        main_window.textBrowser_log.append("未选择文件夹，无法打开")
-        main_window.textBrowser_log.append(f"{SEPARATOR}")
+        main_window.text_log.error_log("未选择文件夹，无法打开", True)
     else:
         try:
             os.startfile(folder)
         except Exception as e:
-            main_window.textBrowser_log.append(f"{str(e)}")
-            main_window.textBrowser_log.append(f"{SEPARATOR}")
+            main_window.text_log.error_log(f"{str(e)}", True)
