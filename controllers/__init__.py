@@ -12,3 +12,13 @@ class TextLog:
         self.textBrowser_log.append('<font color="#ff0000">[ERROR] ' + message + '</font>')
         if with_separator:
             self.textBrowser_log.append(self.SEPARATOR)
+
+    def warning_log(self, message, with_separator=False):
+        self.textBrowser_log.append('<font color="#dfa010">[WARNING] ' + message + '</font>')
+        if with_separator:
+            self.textBrowser_log.append(self.SEPARATOR)
+
+    def success_log(self, message, with_separator=False):
+        self.textBrowser_log.append('<font color="#006400">[SUCCESS] ' + message + '</font>')
+        if with_separator:
+            self.textBrowser_log.append(self.SEPARATOR)
