@@ -1433,11 +1433,6 @@
              </item>
              <item>
               <property name="text">
-               <string>响应phpinfo</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
                <string>响应/etc/passwd</string>
               </property>
              </item>
