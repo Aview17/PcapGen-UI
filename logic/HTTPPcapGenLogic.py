@@ -14,7 +14,7 @@ def fix_content_length(request_body):
     content_length = re.search(r'Content-Length: (\d+)', request_body)
     request_body = request_body.replace('\n', '\r\n')
     request_body = request_body.replace('\r\r', '\r')
-    if content_length:
+    if content_length or (content_length is None and request_body[0:3] == 'GET'):
         if request_body[0:3] == 'GET':
             request_body = re.sub(r'Content-Length: \d+', 'Content-Length: 0', request_body)
             request_body = request_body.strip() + "\r\n\r\n"
@@ -185,6 +185,9 @@ def create_http_pcap(req_content_list, rsp_content_list, save_path):
         previous_req_content_len += len(each_req.encode())
 
         # 构造HTTP响应包
+        # 带有标签的响应体需要保证最后要有一个\x0a，不然wireshark会无法识别HTTP（不知道为什么）
+        if each_rsp.endswith(">"):
+            each_rsp = each_rsp.strip() + "\n"
         http_rsp_packet_list, last_fragment_rsp_len = \
             get_http_rsp_packet(each_rsp, http_req_packet_ack_list[-1], ip_dst_pack, src_port=dst_port, dst_port=src_port, add=previous_rsp_content_len)
         previous_rsp_content_len += len(each_rsp.encode())
