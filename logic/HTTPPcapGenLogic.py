@@ -1,5 +1,5 @@
 """
-    从txt文件生成pcap的小工具
+    HTTP报文生成主逻辑
 """
 import re
 
@@ -12,7 +12,7 @@ from Tools import NetworkTools
 
 def fix_content_length(request_body):
     content_length = re.search(r'Content-Length: (\d+)', request_body)
-    request_body = request_body.replace('\n', '\r\n')
+    request_body = re.sub(r"(?<!\r)\n", "\r\n", request_body)
     request_body = request_body.replace('\r\r', '\r')
     if content_length or (content_length is None and request_body[0:3] == 'GET'):
         if request_body[0:3] == 'GET':
@@ -30,6 +30,17 @@ def fix_content_length(request_body):
 
         if actual_length != expected_length:
             request_body = re.sub(r'Content-Length: \d+', f'Content-Length: {actual_length}', request_body)
+
+    # POST请求必须要带Content-Length，不然会识别不到请求内容
+    if content_length is None and request_body[0:4] == 'POST':
+        try:
+            body = request_body.split('\r\n\r\n', 1)[1]
+            actual_length = len(body)
+        except Exception as e:
+            actual_length = 0
+
+        request_body = request_body.replace("\r\n\r\n", f"\r\nContent-Length: {str(actual_length)}\r\n\r\n")
+
     return request_body
 
 
@@ -188,6 +199,7 @@ def create_http_pcap(req_content_list, rsp_content_list, save_path):
         # 带有标签的响应体需要保证最后要有一个\x0a，不然wireshark会无法识别HTTP（不知道为什么）
         if each_rsp.endswith(">"):
             each_rsp = each_rsp.strip() + "\n"
+        each_rsp = fix_content_length(each_rsp)
         http_rsp_packet_list, last_fragment_rsp_len = \
             get_http_rsp_packet(each_rsp, http_req_packet_ack_list[-1], ip_dst_pack, src_port=dst_port, dst_port=src_port, add=previous_rsp_content_len)
         previous_rsp_content_len += len(each_rsp.encode())
@@ -211,5 +223,5 @@ def create_http_pcap(req_content_list, rsp_content_list, save_path):
         wrpcap(save_path, [http_traffic])
     except Exception as e:
         return {"success": False, "level": "error", "msg": f"异常详情：{e}"}
-    time.sleep(1)
+    time.sleep(1.5)
     return {"success": True, "level": "success", "msg": "报文生成成功！"}

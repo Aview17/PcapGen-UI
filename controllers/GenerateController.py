@@ -3,6 +3,10 @@ import os
 from PyQt5.QtWidgets import QRadioButton, QTextEdit
 
 from logic.HTTPPcapGenLogic import create_http_pcap
+from logic.TCPPcapGenLogic import create_tcp_pcap
+from logic.UDPPcapGenLogic import create_udp_pcap
+
+func_dict = {"HTTP": create_http_pcap, "TCP": create_tcp_pcap, "UDP": create_udp_pcap}
 
 
 def gen_pcap(main_window):
@@ -28,7 +32,8 @@ def gen_pcap(main_window):
 
     # 创建报文
     main_window.text_log.info_log("正在生成报文，请稍等...")
-    res = create_http_pcap(req_list, rsp_list, save_path)
+    res = func_dict[selected_protocol](req_list, rsp_list, save_path)
+
     # 创建失败直接return
     if not res["success"]:
         if res["level"] == "error":

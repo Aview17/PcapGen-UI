@@ -39,6 +39,45 @@ def generate_mac_address(separator=":", case="lower", mode="single", group=2):
     return mac_str if case == "lower" else mac_str.upper()
 
 
+def generate_c_section_ip(src_ip="", dst_ip=""):
+    """
+    用于随机生成相同C段的源/目的地址
+    :return: 源ip，目的ip
+    """
+    # 自定义源、目的ip的情况下不做任何操作返回
+    if src_ip and dst_ip:
+        return src_ip, dst_ip
+    # 完全随机的情况下 生成随机源目的ip
+    elif not src_ip and not dst_ip:
+        # 生成随机C段目的地址
+        three = random.randint(1, 254)
+        four = random.randint(130, 254)
+        dst_c_section = f"192.168.{str(three)}.{str(four)}"
+
+        # 根据目的地址生成相同C段源地址
+        src_four = random.randint(1, 129)
+        dip_array = dst_c_section.split(".")
+        dip_array[-1] = str(src_four)
+        src_c_section = ".".join(dip_array)
+
+        return src_c_section, dst_c_section
+    # 目的ip随机的情况下，直接随机一个A段的公网地址
+    elif src_ip and not dst_ip:
+        ip_array = [str(random.randint(20, 100)), str(random.randint(1, 254)),
+                    str(random.randint(1, 254)), str(random.randint(1, 254))]
+        dst_ip = ".".join(ip_array)
+        return src_ip, dst_ip
+    # 源ip随机的情况下，根据目的地址生成相同C段源地址
+    else:
+        src_four = random.randint(1, 254)
+        dip_array = dst_ip.split(".")
+        # 避免随机到原目的ip相同的情况
+        if dip_array[-1] == str(src_four):
+            src_four = (src_four - 1) if src_four != 1 else (src_four + 1)
+        dip_array[-1] = str(src_four)
+        src_c_section = ".".join(dip_array)
+        return src_c_section, dst_ip
+
+
 if __name__ == "__main__":
-    print(generate_mac_address())
-    print(generate_mac_address(mode="group"))
+    print(generate_c_section_ip("192.168.6.1", dst_ip="192.168.6.1"))
