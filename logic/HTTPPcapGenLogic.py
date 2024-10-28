@@ -34,12 +34,13 @@ def fix_content_length(request_body):
     # POST请求必须要带Content-Length，不然会识别不到请求内容
     if content_length is None and request_body[0:4] == 'POST':
         try:
+            # 需要取 除头部以外的所有内容，因为有些表单上传的位置也会出现\r\n\r\n，所以split限制只切1次
             body = request_body.split('\r\n\r\n', 1)[1]
             actual_length = len(body)
         except Exception as e:
             actual_length = 0
 
-        request_body = request_body.replace("\r\n\r\n", f"\r\nContent-Length: {str(actual_length)}\r\n\r\n")
+        request_body = request_body.replace("\r\n\r\n", f"\r\nContent-Length: {str(actual_length)}\r\n\r\n", 1)
 
     return request_body
 
@@ -111,7 +112,7 @@ def verify_req_rsp(ori_req_list: list, ori_rsp_list: list):
         if re.search(r"Host: (\d+\.){3}\d+(:\d+)?", req) is None and re.search(r"Host: (\w+\.)+\w+(:\d+)?", req) is None:
             return {"success": False, "msg": "Host字段异常，请修改Host字段（请使用ip/ip:port/domain/domain:port）"}
 
-        # 判断响应字段的合规性（暂时不加）
+        # TODO 判断响应字段的合规性（暂时不加）
 
     return {"success": True}
 

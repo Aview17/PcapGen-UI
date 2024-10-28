@@ -2,6 +2,7 @@ import os
 
 from PyQt5.QtWidgets import QRadioButton, QTextEdit
 
+import Tools.NetworkTools
 from logic.HTTPPcapGenLogic import create_http_pcap
 from logic.TCPPcapGenLogic import create_tcp_pcap
 from logic.UDPPcapGenLogic import create_udp_pcap
@@ -18,6 +19,10 @@ def gen_pcap(main_window):
     elif "UDP" in selected_radio.text():
         selected_protocol = "UDP"
     main_window.text_log.info_log(f"选择生成协议：{selected_protocol}")
+
+    # 选择协议为TCP/UDP的情况下，还需要获取用户自定义的ip/端口
+    if selected_protocol in ["TCP", "UDP"]:
+        res = _get_custom_quadruple(main_window)
 
     req_list, rsp_list, is_len_equal = _get_req_rsp_list(main_window)
     if not is_len_equal:
@@ -75,3 +80,43 @@ def _get_save_path(main_window):
     if folder is None or len(folder) < 1 or os.path.exists(full_path):
         return ""
     return full_path
+
+
+def _get_custom_quadruple(main_window):
+    ret = {"sip": "", "dip": "", "sport": 0, "dport": 0, "verify": True, "fail_key": []}
+    # 从ip端口的自定义区域获取自定义的ip端口内容
+    custom_sip = main_window.lineEdit_tdp_sip.text().strip()
+    custom_dip = main_window.lineEdit_tdp_dip.text().strip()
+    custom_sport = main_window.lineEdit_tdp_sport.text().strip()
+    custom_dport = main_window.lineEdit_tdp_dport.text().strip()
+
+    if custom_sip != "":
+        # 验证源ip是否符合格式
+        is_match_format = Tools.NetworkTools.determine_ipv4_format(custom_sip)
+        if not is_match_format:
+            ret["verify"] = False
+            ret["fail_key"].append("sip")
+    if custom_dip != "":
+        # 验证目的ip是否符合格式
+        is_match_format = Tools.NetworkTools.determine_ipv4_format(custom_dip)
+        if not is_match_format:
+            ret["verify"] = False
+            ret["fail_key"].append("dip")
+    if custom_sport != "":
+        # 验证源端口是否符合格式
+        is_match_format = Tools.NetworkTools.determine_port_format(custom_sport)
+        if not is_match_format:
+            ret["verify"] = False
+            ret["fail_key"].append("sport")
+    if custom_dport != "":
+        # 验证源端口是否符合格式
+        is_match_format = Tools.NetworkTools.determine_port_format(custom_dport)
+        if not is_match_format:
+            ret["verify"] = False
+            ret["fail_key"].append("dport")
+    # 验证失败返回
+    if ret["verify"] is False:
+        return ret
+
+    # 至此，只存在验证成功或为空字符串的情况，对空字符串的位置进行填充
+

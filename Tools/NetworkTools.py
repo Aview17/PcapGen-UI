@@ -1,7 +1,29 @@
 """
     工具函数
 """
+import re
 import random
+
+
+def determine_ipv4_format(ipv4_address: str):
+    """
+    用于判断ip是否符合格式
+    :param ipv4_address: ipv4地址
+    :return: Ture/False
+    """
+    return True if \
+        re.search(r'(((2((5[0-5])|([0-4]\d)))|([0-1]?\d{1,2}))(\.((2((5[0-5])|([0-4]\d)))|([0-1]?\d{1,2}))){3})',
+                  ipv4_address, re.IGNORECASE) \
+        else False
+
+
+def determine_port_format(port):
+    """
+    用于判断端口是否符合格式
+    :param port: 端口
+    :return: Ture/False
+    """
+    return 0 < int(port) <= 65535
 
 
 def generate_mac_address(separator=":", case="lower", mode="single", group=2):
