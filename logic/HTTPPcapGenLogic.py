@@ -143,7 +143,7 @@ def get_quadruple(request: str):
     return package_sip, package_sport, package_dip, package_dport
 
 
-def create_http_pcap(req_content_list, rsp_content_list, save_path):
+def create_http_pcap(req_content_list, rsp_content_list, save_path, placeholder):
     # 先判断一下请求/响应是否合规
     verify_res = verify_req_rsp(req_content_list, rsp_content_list)
     if not verify_res["success"]:

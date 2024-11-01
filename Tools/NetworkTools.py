@@ -23,7 +23,12 @@ def determine_port_format(port):
     :param port: 端口
     :return: Ture/False
     """
-    return 0 < int(port) <= 65535
+    try:
+        is_in_range = (0 < int(port) <= 65535)
+    except Exception as e:
+        return False
+
+    return is_in_range
 
 
 def generate_mac_address(separator=":", case="lower", mode="single", group=2):
@@ -99,6 +104,31 @@ def generate_c_section_ip(src_ip="", dst_ip=""):
         dip_array[-1] = str(src_four)
         src_c_section = ".".join(dip_array)
         return src_c_section, dst_ip
+
+
+def generate_s_d_prt(s_port=0, d_port=0):
+    """
+    用于随机生成源目的端口
+    :param s_port:
+    :param d_port:
+    :return:
+    """
+    # 自定义源、目的端口的情况下不做任何操作返回
+    if int(s_port) and int(d_port):
+        return int(src_ip), int(dst_ip)
+    # 完全随机的情况下 生成随机源目的端口
+    elif not int(s_port) and not int(d_port):
+        random_s_port = random.randint(30000, 65500)
+        random_d_port = random.randint(1000, 20000)
+        return random_s_port, random_d_port
+    # 目的端口随机的情况
+    elif int(s_port) and not int(d_port):
+        random_d_port = random.randint(1000, 20000)
+        return int(s_port), random_d_port
+    # 源端口随机的情况
+    else:
+        random_s_port = random.randint(30000, 65500)
+        return random_s_port, int(d_port)
 
 
 if __name__ == "__main__":

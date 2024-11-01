@@ -19,12 +19,18 @@ def gen_pcap(main_window):
     elif "UDP" in selected_radio.text():
         selected_protocol = "UDP"
     main_window.text_log.info_log(f"选择生成协议：{selected_protocol}")
+    tdp_four_tuple = dict()
 
     # 选择协议为TCP/UDP的情况下，还需要获取用户自定义的ip/端口
     if selected_protocol in ["TCP", "UDP"]:
-        res = _get_custom_quadruple(main_window)
+        tdp_four_tuple = _get_custom_quadruple(main_window)
+        if not tdp_four_tuple["verify"]:
+            main_window.text_log.error_log(f"以下字段填写有误：{tdp_four_tuple['fail_key']}")
 
     req_list, rsp_list, is_len_equal = _get_req_rsp_list(main_window)
+    if not req_list and not rsp_list:
+        main_window.text_log.error_log("未填写请求/响应")
+        return
     if not is_len_equal:
         main_window.text_log.error_log("请求个数应与响应个数相同！（可选择默认请求/响应进行填充）")
         return
@@ -37,7 +43,7 @@ def gen_pcap(main_window):
 
     # 创建报文
     main_window.text_log.info_log("正在生成报文，请稍等...")
-    res = func_dict[selected_protocol](req_list, rsp_list, save_path)
+    res = func_dict[selected_protocol](req_list, rsp_list, save_path, tdp_four_tuple)
 
     # 创建失败直接return
     if not res["success"]:
@@ -108,15 +114,22 @@ def _get_custom_quadruple(main_window):
         if not is_match_format:
             ret["verify"] = False
             ret["fail_key"].append("sport")
+    else:
+        custom_sport = 0
     if custom_dport != "":
-        # 验证源端口是否符合格式
+        # 验证目的端口是否符合格式
         is_match_format = Tools.NetworkTools.determine_port_format(custom_dport)
         if not is_match_format:
             ret["verify"] = False
             ret["fail_key"].append("dport")
+    else:
+        custom_dport = 0
     # 验证失败返回
     if ret["verify"] is False:
         return ret
 
     # 至此，只存在验证成功或为空字符串的情况，对空字符串的位置进行填充
+    ret["sip"], ret["dip"] = Tools.NetworkTools.generate_c_section_ip(custom_sip, custom_dip)
+    ret["sport"], ret["dport"] = Tools.NetworkTools.generate_s_d_prt(custom_sport, custom_dport)
 
+    return ret
