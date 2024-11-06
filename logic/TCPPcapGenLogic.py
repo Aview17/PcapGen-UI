@@ -25,7 +25,8 @@ def get_tcp_req_packet(all_tcp_request, syn_ack_packet, ack_packet, ip_src_pack,
     for i in range(group_num):
         fragment_req = all_tcp_request[i*mtu: i*mtu+mtu]
         if i == 0:
-            fragment_req_pack = ip_src_pack/TCP(sport=src_port, dport=dst_port, flags="A", seq=ack_packet[TCP].seq + add,
+            fragment_req_pack = ip_src_pack/TCP(sport=src_port, dport=dst_port, flags="A",
+                                                seq=ack_packet[TCP].seq + add,
                                                 ack=syn_ack_packet[TCP].seq + 1 + add2)/fragment_req
         else:
             fragment_req_pack = ip_src_pack/TCP(sport=src_port, dport=dst_port, flags=24,
@@ -42,7 +43,7 @@ def get_tcp_req_packet(all_tcp_request, syn_ack_packet, ack_packet, ip_src_pack,
     return tcp_req_packet_list, tcp_req_packet_ack_list
 
 
-def get_tcp_rsp_packet(all_tcp_response, last_check_ack_pack, ip_src_pack, ip_dst_pack, src_port, dst_port, mtu=1460, add=0, add2=0):
+def get_tcp_rsp_packet(all_tcp_response, last_check_ack_pack, ip_src_pack, ip_dst_pack, src_port, dst_port, mtu=1460):
     if len(all_tcp_response) < mtu + 1:
         tcp_rsp_one = ip_dst_pack/TCP(sport=src_port, dport=dst_port, flags=24, seq=last_check_ack_pack[TCP].seq,
                                       ack=last_check_ack_pack[TCP].ack)/all_tcp_response
@@ -141,7 +142,7 @@ def create_tcp_pcap(req_content_list, rsp_content_list, save_path, tdp_four_tupl
         each_rsp = re.sub(r"[\s\r\n]", "", each_rsp)
         each_rsp = get_bytes_from_txt(each_rsp)
         tcp_rsp_packet_list, tcp_rsp_packet_ack_list, last_fragment_rsp_len = \
-            get_tcp_rsp_packet(each_rsp, tcp_req_packet_ack_list[-1], ip_src_pack, ip_dst_pack, src_port=dst_port, dst_port=src_port, add=previous_rsp_content_len, add2=previous_req_content_len)
+            get_tcp_rsp_packet(each_rsp, tcp_req_packet_ack_list[-1], ip_src_pack, ip_dst_pack, src_port=dst_port, dst_port=src_port)
         previous_rsp_content_len += len(each_rsp)
 
         # 将所有的请求响应放到全包中

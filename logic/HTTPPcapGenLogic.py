@@ -45,10 +45,10 @@ def fix_content_length(request_body):
     return request_body
 
 
-def get_http_req_packet(all_http_request, syn_ack_packet, ack_packet, ip_src_pack, ip_dst_pack, src_port, dst_port, mtu=1460, add=0):
+def get_http_req_packet(all_http_request, syn_ack_packet, ack_packet, ip_src_pack, ip_dst_pack, src_port, dst_port, mtu=1460, add=0, add2=0):
     if len(all_http_request) < mtu + 1:
         http_req_one = ip_src_pack/TCP(sport=src_port, dport=dst_port, flags=24, seq=ack_packet[TCP].seq + add,
-                                       ack=syn_ack_packet[TCP].seq + 1)/all_http_request.encode()
+                                       ack=syn_ack_packet[TCP].seq + 1 + add2)/all_http_request.encode()
         http_req_ack_one = ip_dst_pack/TCP(sport=dst_port, dport=src_port, seq=http_req_one[TCP].ack,
                                            ack=http_req_one[TCP].seq + len(all_http_request.encode()), flags='A')
         return [http_req_one], [http_req_ack_one]
@@ -60,11 +60,13 @@ def get_http_req_packet(all_http_request, syn_ack_packet, ack_packet, ip_src_pac
     for i in range(group_num):
         fragment_req = all_http_request.encode()[i*mtu: i*mtu+mtu]
         if i == 0:
-            fragment_req_pack = ip_src_pack/TCP(sport=src_port, dport=dst_port, flags="A", seq=ack_packet[TCP].seq,
-                                                ack=syn_ack_packet[TCP].seq + 1)/fragment_req
+            fragment_req_pack = ip_src_pack/TCP(sport=src_port, dport=dst_port, flags="A",
+                                                seq=ack_packet[TCP].seq + add,
+                                                ack=syn_ack_packet[TCP].seq + 1 + add2)/fragment_req
         else:
-            fragment_req_pack = ip_src_pack/TCP(sport=src_port, dport=dst_port, flags=24, seq=ack_packet[TCP].seq + i * mtu,
-                                                ack=syn_ack_packet[TCP].seq + 1)/fragment_req
+            fragment_req_pack = ip_src_pack/TCP(sport=src_port, dport=dst_port, flags=24,
+                                                seq=ack_packet[TCP].seq + i * mtu + add,
+                                                ack=syn_ack_packet[TCP].seq + 1 + add2)/fragment_req
         # 每个请求包的ack包
         fragment_req_ack_pack = ip_dst_pack/TCP(sport=dst_port, dport=src_port, seq=fragment_req_pack[TCP].ack,
                                                 ack=fragment_req_pack[TCP].seq + len(fragment_req), flags='A')
@@ -74,18 +76,23 @@ def get_http_req_packet(all_http_request, syn_ack_packet, ack_packet, ip_src_pac
     return http_req_packet_list, http_req_packet_ack_list
 
 
-def get_http_rsp_packet(all_http_response, last_check_ack_pack, ip_dst_pack, src_port, dst_port, mtu=1460, add=0):
+def get_http_rsp_packet(all_http_response, last_check_ack_pack, ip_src_pack, ip_dst_pack, src_port, dst_port, mtu=1460):
     if len(all_http_response) < mtu + 1:
-        return [ip_dst_pack/TCP(sport=src_port, dport=dst_port, flags=24, seq=last_check_ack_pack[TCP].seq + add,
-                                ack=last_check_ack_pack[TCP].ack)/all_http_response.encode()], \
-               len(all_http_response.encode())
+        http_rsp_one = ip_dst_pack/TCP(sport=src_port, dport=dst_port, flags=24, seq=last_check_ack_pack[TCP].seq,
+                                       ack=last_check_ack_pack[TCP].ack)/all_http_response.encode()
+        http_rsp_ack_one = ip_src_pack/TCP(sport=dst_port, dport=src_port, seq=http_rsp_one[TCP].ack,
+                                           ack=http_rsp_one[TCP].seq + len(all_http_response), flags='A')
+
+        return [http_rsp_one], [http_rsp_ack_one], len(all_http_response.encode())
+
     # 处理超过mtu的响应体
     http_rsp_packet_list = []
+    http_rsp_packet_ack_list = []
     group_num = math.ceil(len(all_http_response) / int(mtu))
     last_fragment_rsp_len = 0   # 最后一段响应体的长度
     for i in range(group_num):
         fragment_rsp = all_http_response.encode()[i*mtu: i*mtu+mtu]
-        if i == group_num-1:
+        if i == group_num - 1:
             last_fragment_rsp_len = len(fragment_rsp)
         if i == 0:
             fragment_rsp_pack = ip_dst_pack/TCP(sport=src_port, dport=dst_port, flags=24,
@@ -96,9 +103,16 @@ def get_http_rsp_packet(all_http_response, last_check_ack_pack, ip_dst_pack, src
                                                 seq=last_check_ack_pack[TCP].seq + i * mtu,
                                                 ack=last_check_ack_pack[TCP].ack)/fragment_rsp
 
-        http_rsp_packet_list.append(fragment_rsp_pack)
+        # 每个响应包的ack包
+        fragment_rsp_ack_pack = ip_src_pack/TCP(sport=dst_port, dport=src_port, seq=fragment_rsp_pack[TCP].ack,
+                                                ack=fragment_rsp_pack[TCP].seq + len(fragment_rsp), flags='A')
 
-    return http_rsp_packet_list, last_fragment_rsp_len
+        http_rsp_packet_list.append(fragment_rsp_pack)
+        # 分包情况下只留下对最后一个包的确认包
+        if i == group_num - 1:
+            http_rsp_packet_ack_list.append(fragment_rsp_ack_pack)
+
+    return http_rsp_packet_list, http_rsp_packet_ack_list, last_fragment_rsp_len
 
 
 def verify_req_rsp(ori_req_list: list, ori_rsp_list: list):
@@ -193,7 +207,7 @@ def create_http_pcap(req_content_list, rsp_content_list, save_path, placeholder)
         each_req = fix_content_length(each_req)
         # 构造HTTP请求包和请求包的确认包
         http_req_packet_list, http_req_packet_ack_list = \
-            get_http_req_packet(each_req, syn_ack_packet, ack_packet, ip_src_pack, ip_dst_pack, src_port, dst_port, add=previous_req_content_len)
+            get_http_req_packet(each_req, syn_ack_packet, ack_packet, ip_src_pack, ip_dst_pack, src_port, dst_port, add=previous_req_content_len, add2=previous_rsp_content_len)
         previous_req_content_len += len(each_req.encode())
 
         # 构造HTTP响应包
@@ -201,17 +215,18 @@ def create_http_pcap(req_content_list, rsp_content_list, save_path, placeholder)
         if each_rsp.endswith(">"):
             each_rsp = each_rsp.strip() + "\n"
         each_rsp = fix_content_length(each_rsp)
-        http_rsp_packet_list, last_fragment_rsp_len = \
-            get_http_rsp_packet(each_rsp, http_req_packet_ack_list[-1], ip_dst_pack, src_port=dst_port, dst_port=src_port, add=previous_rsp_content_len)
+        http_rsp_packet_list, http_rsp_packet_ack_list, last_fragment_rsp_len = \
+            get_http_rsp_packet(each_rsp, http_req_packet_ack_list[-1], ip_src_pack, ip_dst_pack, src_port=dst_port, dst_port=src_port)
         previous_rsp_content_len += len(each_rsp.encode())
 
         # 将所有的请求响应放到全包中
         http_traffic += http_req_packet_list
         http_traffic += http_req_packet_ack_list
         http_traffic += http_rsp_packet_list
+        http_traffic += http_rsp_packet_ack_list
 
     # 构造挥手包，由服务端发起
-    fin_packet = ip_dst_pack/TCP(sport=dst_port, dport=src_port, flags="FA", seq=http_traffic[-1][TCP].seq + last_fragment_rsp_len, ack=http_traffic[-1][TCP].ack)
+    fin_packet = ip_dst_pack/TCP(sport=dst_port, dport=src_port, flags="FA", seq=http_rsp_packet_list[-1][TCP].seq + last_fragment_rsp_len, ack=http_rsp_packet_list[-1][TCP].ack)
     ack_packet_close = ip_src_pack/TCP(sport=src_port, dport=dst_port, flags="A", seq=fin_packet[TCP].ack, ack=fin_packet[TCP].seq + 1)
     ack_packet_close2 = ip_src_pack/TCP(sport=src_port, dport=dst_port, flags="FA", seq=ack_packet_close[TCP].seq, ack=fin_packet[TCP].seq + 1)
     fin_packet_ack = ip_dst_pack/TCP(sport=dst_port, dport=src_port, flags="A", seq=ack_packet_close2[TCP].ack, ack=ack_packet_close2[TCP].seq + 1)
