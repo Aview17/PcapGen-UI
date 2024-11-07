@@ -115,7 +115,7 @@ def generate_s_d_prt(s_port=0, d_port=0):
     """
     # 自定义源、目的端口的情况下不做任何操作返回
     if int(s_port) and int(d_port):
-        return int(src_ip), int(dst_ip)
+        return int(s_port), int(d_port)
     # 完全随机的情况下 生成随机源目的端口
     elif not int(s_port) and not int(d_port):
         random_s_port = random.randint(30000, 65500)
