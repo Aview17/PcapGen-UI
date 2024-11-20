@@ -62,15 +62,17 @@ def gen_pcap(main_window):
 
 def _get_req_rsp_list(main_window):
     # 获取tabWidget的text区域中所有的请求内容
-    all_req_q_text = main_window.tabWidget_3.findChildren(QTextEdit)
     req_list = []
-    for each_q_text in all_req_q_text:
+    for i in range(main_window.tabWidget_3.count()):
+        # 获取当前index下的Widget对象，并获取其下文本框中的内容
+        each_q_text = main_window.tabWidget_3.widget(i).findChild(QTextEdit)
         if each_q_text.toPlainText():
             req_list.append(each_q_text.toPlainText())
+
     # 获取tabWidget的text区域中所有的响应内容
-    all_rsp_q_text = main_window.tabWidget_2.findChildren(QTextEdit)
     rsp_list = []
-    for each_q_text in all_rsp_q_text:
+    for i in range(main_window.tabWidget_2.count()):
+        each_q_text = main_window.tabWidget_2.widget(i).findChild(QTextEdit)
         if each_q_text.toPlainText():
             rsp_list.append(each_q_text.toPlainText())
 
