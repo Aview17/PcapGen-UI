@@ -7,7 +7,7 @@ from scapy.all import *
 from scapy.utils import wrpcap
 from scapy.layers.inet import IP, TCP, Ether
 
-from Tools import NetworkTools
+from Tools import NetworkTools, ProgramTools
 
 
 def fix_content_length(request_body):
@@ -233,6 +233,9 @@ def create_http_pcap(req_content_list, rsp_content_list, save_path, placeholder)
     last_four_handshake_list = [fin_packet, ack_packet_close, ack_packet_close2, fin_packet_ack]
 
     http_traffic += last_four_handshake_list
+
+    # 调整时间戳
+    http_traffic = ProgramTools.adjustment_packet_timestamp(http_traffic)
 
     # 将流量报文保存到本地
     try:

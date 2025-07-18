@@ -7,7 +7,7 @@ from scapy.all import *
 from scapy.utils import wrpcap
 from scapy.layers.inet import IP, TCP, Ether
 
-from Tools import NetworkTools
+from Tools import NetworkTools, ProgramTools
 
 
 def get_tcp_req_packet(all_tcp_request, syn_ack_packet, ack_packet, ip_src_pack, ip_dst_pack, src_port, dst_port, mtu=1460, add=0, add2=0):
@@ -159,6 +159,8 @@ def create_tcp_pcap(req_content_list, rsp_content_list, save_path, tdp_four_tupl
     last_four_handshake_list = [fin_packet, ack_packet_close, ack_packet_close2, fin_packet_ack]
 
     tcp_traffic += last_four_handshake_list
+
+    tcp_traffic = ProgramTools.adjustment_packet_timestamp(tcp_traffic)
 
     # 将流量报文保存到本地
     try:
